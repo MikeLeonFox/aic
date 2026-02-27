@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('ai-provider')
   .description('CLI tool to manage multiple AI providers')
-  .version('1.0.0');
+  .version('1.0.1');
 
 program
   .command('add')
