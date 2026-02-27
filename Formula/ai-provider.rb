@@ -1,7 +1,7 @@
 class AiProvider < Formula
   desc "Manage multiple AI providers (Claude API, LiteLLM, Claude.ai) for Claude Code"
-  homepage "https://github.com/GITHUB_USERNAME/ai-provider-cli"
-  url "https://github.com/GITHUB_USERNAME/ai-provider-cli/archive/refs/tags/v1.0.0.tar.gz"
+  homepage "https://github.com/MikeLeonFox/ai-provider-cli"
+  url "https://github.com/MikeLeonFox/ai-provider-cli/archive/refs/tags/v1.0.0.tar.gz"
   sha256 "FILL_IN_AFTER_RELEASE" # see instructions below
   license "MIT"
 
