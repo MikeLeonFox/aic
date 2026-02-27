@@ -25,7 +25,7 @@ brew install aic
 ### From source
 
 ```bash
-git clone https://github.com/MikeLeonFox/ai-provider-cli.git
+git clone https://github.com/MikeLeonFox/aic.git
 cd ai-provider-cli
 npm install
 npm run build
