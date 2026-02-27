@@ -1,6 +1,6 @@
 {
   "name": "aic",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "CLI tool to manage multiple AI providers",
   "main": "dist/index.js",
   "bin": {
