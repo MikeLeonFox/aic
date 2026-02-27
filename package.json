@@ -4,7 +4,7 @@
   "description": "CLI tool to manage multiple AI providers",
   "main": "dist/index.js",
   "bin": {
-    "ai-provider": "./dist/index.js"
+    "aic": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",

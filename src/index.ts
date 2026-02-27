@@ -13,7 +13,7 @@ import { completionCommand } from './commands/completion.js';
 const program = new Command();
 
 program
-  .name('ai-provider')
+  .name('aic')
   .description('CLI tool to manage multiple AI providers')
   .version('1.0.2');
 

@@ -12,13 +12,13 @@ class AiProvider < Formula
     system "npm", "run", "build"
     chmod 0755, "dist/index.js"
     libexec.install Dir["*"]
-    (bin/"ai-provider").write <<~SH
+    (bin/"aic").write <<~SH
       #!/bin/bash
       exec "#{Formula["node"].opt_bin}/node" "#{libexec}/dist/index.js" "$@"
     SH
   end
 
   test do
-    assert_match "1.0.2", shell_output("#{bin}/ai-provider --version")
+    assert_match "1.0.2", shell_output("#{bin}/aic --version")
   end
 end

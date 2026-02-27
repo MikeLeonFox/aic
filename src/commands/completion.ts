@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 
 const BASH_COMPLETION = `
-# ai-provider bash completion
-_ai_provider_complete() {
+# aic bash completion
+_aic_complete() {
   local cur prev words cword
   _init_completion || return
 
@@ -11,7 +11,7 @@ _ai_provider_complete() {
   case "$prev" in
     switch|remove|show)
       local providers
-      providers=$(ai-provider list --names-only 2>/dev/null)
+      providers=$(aic list --names-only 2>/dev/null)
       COMPREPLY=($(compgen -W "$providers -" -- "$cur"))
       return
       ;;
@@ -22,13 +22,13 @@ _ai_provider_complete() {
   fi
 }
 
-complete -F _ai_provider_complete ai-provider
+complete -F _aic_complete aic
 `.trim();
 
 const ZSH_COMPLETION = `
-#compdef ai-provider
+#compdef aic
 
-_ai_provider_complete() {
+_aic_complete() {
   local state
 
   _arguments \\
@@ -54,7 +54,7 @@ _ai_provider_complete() {
       case $words[2] in
         switch|remove|show)
           local providers
-          providers=($(ai-provider list --names-only 2>/dev/null))
+          providers=($(aic list --names-only 2>/dev/null))
           local special=('-:Switch to previous provider')
           _describe 'provider' providers
           _describe 'special' special
@@ -68,33 +68,33 @@ _ai_provider_complete() {
   esac
 }
 
-_ai_provider_complete
+_aic_complete
 `.trim();
 
 const FISH_COMPLETION = `
-# ai-provider fish completion
+# aic fish completion
 
-function __fish_ai_provider_complete
-  ai-provider list --names-only 2>/dev/null
+function __fish_aic_complete
+  aic list --names-only 2>/dev/null
 end
 
 # Main commands
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "add"        -d "Add a new AI provider"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "list"       -d "List all configured providers"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "remove"     -d "Remove a provider"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "switch"     -d "Switch to a different provider"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "current"    -d "Show the current active provider"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "env"        -d "Manage custom environment variables"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "show"       -d "Show provider details"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "discover"   -d "Import provider from ~/.claude/settings.json"
-complete -c ai-provider -f -n "__fish_use_subcommand" -a "completion" -d "Print shell completion script"
+complete -c aic -f -n "__fish_use_subcommand" -a "add"        -d "Add a new AI provider"
+complete -c aic -f -n "__fish_use_subcommand" -a "list"       -d "List all configured providers"
+complete -c aic -f -n "__fish_use_subcommand" -a "remove"     -d "Remove a provider"
+complete -c aic -f -n "__fish_use_subcommand" -a "switch"     -d "Switch to a different provider"
+complete -c aic -f -n "__fish_use_subcommand" -a "current"    -d "Show the current active provider"
+complete -c aic -f -n "__fish_use_subcommand" -a "env"        -d "Manage custom environment variables"
+complete -c aic -f -n "__fish_use_subcommand" -a "show"       -d "Show provider details"
+complete -c aic -f -n "__fish_use_subcommand" -a "discover"   -d "Import provider from ~/.claude/settings.json"
+complete -c aic -f -n "__fish_use_subcommand" -a "completion" -d "Print shell completion script"
 
 # Provider name completions for commands that take a provider name
-complete -c ai-provider -f -n "__fish_seen_subcommand_from switch remove show" -a "(__fish_ai_provider_complete)"
-complete -c ai-provider -f -n "__fish_seen_subcommand_from switch" -a "-" -d "Switch to previous provider"
+complete -c aic -f -n "__fish_seen_subcommand_from switch remove show" -a "(__fish_aic_complete)"
+complete -c aic -f -n "__fish_seen_subcommand_from switch" -a "-" -d "Switch to previous provider"
 
 # Shell completions for completion command
-complete -c ai-provider -f -n "__fish_seen_subcommand_from completion" -a "bash zsh fish"
+complete -c aic -f -n "__fish_seen_subcommand_from completion" -a "bash zsh fish"
 `.trim();
 
 export function completionCommand(shell: string): void {

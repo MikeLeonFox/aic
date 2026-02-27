@@ -15,7 +15,7 @@ export async function currentCommand(options: CurrentCommandOptions): Promise<vo
         console.log(JSON.stringify({ error: 'No active provider configured' }, null, 2));
       } else {
         console.log(chalk.yellow('No active provider configured.'));
-        console.log(chalk.gray('Use "ai-provider add" to add a provider.'));
+        console.log(chalk.gray('Use "aic add" to add a provider.'));
       }
       return;
     }

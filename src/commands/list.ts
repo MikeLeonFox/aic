@@ -20,7 +20,7 @@ export function listCommand(options: ListCommandOptions = {}): void {
 
     if (providers.length === 0) {
       console.log(chalk.yellow('No providers configured yet.'));
-      console.log(chalk.gray('Use "ai-provider add" to add a provider.'));
+      console.log(chalk.gray('Use "aic add" to add a provider.'));
       return;
     }
 

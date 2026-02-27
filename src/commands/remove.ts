@@ -6,7 +6,7 @@ export async function removeCommand(providerName: string): Promise<void> {
   try {
     if (!providerName) {
       console.error(chalk.red('Error: Provider name is required'));
-      console.log(chalk.gray('Usage: ai-provider remove <name>'));
+      console.log(chalk.gray('Usage: aic remove <name>'));
       process.exit(1);
     }
 

@@ -19,7 +19,7 @@ export async function switchCommand(providerName?: string): Promise<void> {
       const providers = listProviders();
       if (providers.length === 0) {
         console.error(chalk.red('Error: No providers configured'));
-        console.log(chalk.gray('Use "ai-provider add" to add a provider.'));
+        console.log(chalk.gray('Use "aic add" to add a provider.'));
         process.exit(1);
       }
 
