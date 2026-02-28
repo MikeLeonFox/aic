@@ -1,76 +1,104 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 import chalk from 'chalk';
 import prompts from 'prompts';
 import { addProvider, setApiKey, setActiveProvider } from '../config/manager.js';
 import { Provider, ProviderOptions, validateProviderName } from '../types/provider.js';
-
-const CLAUDE_SETTINGS_FILE = path.join(os.homedir(), '.claude', 'settings.json');
+import { readClaudeCodeConfig, type DiscoveredConfig } from '../targets/claudeCode.js';
+import { readRooCodeConfig, rooCodeTarget } from '../targets/rooCode.js';
+import { claudeCodeTarget } from '../targets/claudeCode.js';
 
 interface DiscoverCommandOptions {
   name?: string;
 }
+
+interface DiscoverSource {
+  label: string;
+  read: () => DiscoveredConfig | null;
+  isAvailable: () => boolean;
+}
+
+const SOURCES: DiscoverSource[] = [
+  {
+    label: 'Claude Code (~/.claude/settings.json)',
+    read: readClaudeCodeConfig,
+    isAvailable: () => claudeCodeTarget.isInstalled(),
+  },
+  {
+    label: 'Roo Code (VSCode extension globalStorage)',
+    read: readRooCodeConfig,
+    isAvailable: () => rooCodeTarget.isInstalled(),
+  },
+];
 
 function maskApiKey(key: string): string {
   if (key.length <= 8) return '***';
   return key.substring(0, 8) + '***';
 }
 
+function printDiscovered(cfg: DiscoveredConfig): void {
+  console.log(`  API Key:  ${cfg.apiKey ? maskApiKey(cfg.apiKey) : chalk.yellow('none (subscription mode)')}`);
+  console.log(`  Endpoint: ${cfg.endpoint || 'https://api.anthropic.com'}`);
+  if (cfg.model) console.log(`  Model:    ${cfg.model}`);
+  if (cfg.smallModel) console.log(`  Small model: ${cfg.smallModel}`);
+  if (cfg.alwaysThinking !== undefined) console.log(`  Always thinking: ${cfg.alwaysThinking}`);
+  if (cfg.disableTelemetry) console.log(`  Disable telemetry: true`);
+  if (cfg.disableBetas) console.log(`  Disable betas: true`);
+  if (cfg.customHeaders && Object.keys(cfg.customHeaders).length > 0) {
+    console.log(`  Custom headers:`);
+    for (const [k, v] of Object.entries(cfg.customHeaders)) {
+      console.log(`    ${chalk.cyan(k)}: ${v}`);
+    }
+  }
+  if (cfg.customEnvs && Object.keys(cfg.customEnvs).length > 0) {
+    console.log(`  Custom envs:`);
+    for (const [k, v] of Object.entries(cfg.customEnvs)) {
+      console.log(`    ${chalk.cyan(k)}=${v}`);
+    }
+  }
+}
+
 export async function discoverCommand(options: DiscoverCommandOptions): Promise<void> {
   try {
-    if (!fs.existsSync(CLAUDE_SETTINGS_FILE)) {
-      console.error(chalk.red('Error: ~/.claude/settings.json not found'));
-      console.log(chalk.gray('No existing Claude settings to discover.'));
+    // Collect available sources
+    const available = SOURCES.filter(s => s.isAvailable());
+
+    if (available.length === 0) {
+      console.error(chalk.red('Error: No supported AI tools detected on this system.'));
+      console.log(chalk.gray('Checked: Claude Code (~/.claude/settings.json), Roo Code (VSCode extension)'));
       process.exit(1);
     }
 
-    const raw = fs.readFileSync(CLAUDE_SETTINGS_FILE, 'utf-8');
-    const cleaned = raw.replace(/,(\s*[}\]])/g, '$1');
-    const settings = JSON.parse(cleaned) as Record<string, unknown>;
+    // Pick source (skip picker if only one available)
+    let source: DiscoverSource;
+    if (available.length === 1) {
+      source = available[0];
+      console.log(chalk.gray(`Discovering from: ${source.label}`));
+    } else {
+      const sourceResponse = await prompts({
+        type: 'select',
+        name: 'source',
+        message: 'Import settings from which tool?',
+        choices: available.map((s, i) => ({ title: s.label, value: i }))
+      });
 
-    const env = (settings['env'] as Record<string, string>) || {};
-
-    // Reverse-map env vars to provider fields
-    const apiKey = env['ANTHROPIC_AUTH_TOKEN'] || env['ANTHROPIC_API_KEY'];
-    const endpoint = env['ANTHROPIC_BASE_URL'] || 'https://api.anthropic.com';
-    const model = env['ANTHROPIC_MODEL'];
-    const smallModel = env['ANTHROPIC_DEFAULT_HAIKU_MODEL'];
-    const alwaysThinking = settings['alwaysThinkingEnabled'] as boolean | undefined;
-    const disableTelemetry = env['DISABLE_TELEMETRY'] === '1';
-    const disableBetas = env['CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS'] === '1';
-
-    // Show preview of discovered settings
-    console.log(chalk.bold('\nDiscovered settings from ~/.claude/settings.json:\n'));
-    console.log(`  API Key:  ${apiKey ? maskApiKey(apiKey) : chalk.yellow('none')}`);
-    console.log(`  Endpoint: ${endpoint}`);
-    if (model) console.log(`  Model:    ${model}`);
-    if (smallModel) console.log(`  Small model: ${smallModel}`);
-    if (alwaysThinking !== undefined) console.log(`  Always thinking: ${alwaysThinking}`);
-    if (disableTelemetry) console.log(`  Disable telemetry: true`);
-    if (disableBetas) console.log(`  Disable betas: true`);
-
-    // Collect extra envs that aren't recognized fields
-    const knownKeys = new Set([
-      'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL',
-      'ANTHROPIC_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL',
-      'DISABLE_TELEMETRY', 'CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS'
-    ]);
-    const customEnvs: Record<string, string> = {};
-    for (const [key, value] of Object.entries(env)) {
-      if (!knownKeys.has(key)) {
-        customEnvs[key] = value;
+      if (sourceResponse.source === undefined) {
+        console.log(chalk.yellow('Operation cancelled'));
+        return;
       }
+
+      source = available[sourceResponse.source as number];
     }
-    if (Object.keys(customEnvs).length > 0) {
-      console.log(`  Custom envs:`);
-      for (const [key, value] of Object.entries(customEnvs)) {
-        console.log(`    ${chalk.cyan(key)}=${value}`);
-      }
+
+    const cfg = source.read();
+    if (!cfg) {
+      console.error(chalk.red(`Error: Could not read settings from ${source.label}`));
+      process.exit(1);
     }
+
+    console.log(chalk.bold(`\nDiscovered settings from ${source.label}:\n`));
+    printDiscovered(cfg);
     console.log('');
 
-    // Prompt for provider name
+    // Provider name
     let providerName = options.name;
     if (!providerName) {
       const nameResponse = await prompts({
@@ -89,7 +117,6 @@ export async function discoverCommand(options: DiscoverCommandOptions): Promise<
       providerName = nameResponse.name;
     }
 
-    // Confirm import
     const confirmResponse = await prompts({
       type: 'confirm',
       name: 'confirm',
@@ -102,23 +129,26 @@ export async function discoverCommand(options: DiscoverCommandOptions): Promise<
       return;
     }
 
-    // Build provider object
+    // Build Provider object from discovered config
     const providerOptions: ProviderOptions = {};
-    if (alwaysThinking !== undefined) providerOptions.alwaysThinking = alwaysThinking;
-    if (disableTelemetry) providerOptions.disableTelemetry = true;
-    if (disableBetas) providerOptions.disableBetas = true;
+    if (cfg.alwaysThinking !== undefined) providerOptions.alwaysThinking = cfg.alwaysThinking;
+    if (cfg.disableTelemetry) providerOptions.disableTelemetry = true;
+    if (cfg.disableBetas) providerOptions.disableBetas = true;
 
     let provider: Provider;
+    const { apiKey, endpoint, model, smallModel, customEnvs, customHeaders } = cfg;
+
     if (apiKey) {
       provider = {
         name: providerName!,
         type: 'claude',
-        endpoint,
+        endpoint: endpoint || 'https://api.anthropic.com',
         hasApiKey: true,
         ...(model && { model }),
         ...(smallModel && { smallModel }),
         ...(Object.keys(providerOptions).length > 0 && { options: providerOptions }),
-        ...(Object.keys(customEnvs).length > 0 && { customEnvs })
+        ...(customEnvs && Object.keys(customEnvs).length > 0 && { customEnvs }),
+        ...(customHeaders && Object.keys(customHeaders).length > 0 && { headers: customHeaders }),
       };
     } else {
       provider = {
@@ -128,18 +158,16 @@ export async function discoverCommand(options: DiscoverCommandOptions): Promise<
         ...(model && { model }),
         ...(smallModel && { smallModel }),
         ...(Object.keys(providerOptions).length > 0 && { options: providerOptions }),
-        ...(Object.keys(customEnvs).length > 0 && { customEnvs })
+        ...(customEnvs && Object.keys(customEnvs).length > 0 && { customEnvs }),
       };
     }
 
-    // Save provider (API key to keychain)
     await addProvider(provider, apiKey);
 
     if (apiKey && provider.type === 'claude') {
       await setApiKey(providerName!, apiKey);
     }
 
-    // Set as active
     await setActiveProvider(providerName!);
 
     console.log(chalk.green(`\n✓ Provider '${providerName}' imported and set as active`));

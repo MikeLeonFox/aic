@@ -1,8 +1,9 @@
 import prompts from 'prompts';
 import chalk from 'chalk';
 import { setProviderEnv, deleteProviderEnv, listProviders } from '../config/manager.js';
+import { allTargets } from '../targets/index.js';
 
-export async function envCommand(providerName: string): Promise<void> {
+export async function envCommand(providerName: string, targetId?: string): Promise<void> {
   try {
     const providers = listProviders();
     const provider = providers.find(p => p.name === providerName);
@@ -12,13 +13,31 @@ export async function envCommand(providerName: string): Promise<void> {
       process.exit(1);
     }
 
+    // Validate target ID if provided
+    if (targetId) {
+      const knownTargets = allTargets();
+      if (!knownTargets.find(t => t.id === targetId)) {
+        const ids = knownTargets.map(t => t.id).join(', ');
+        console.error(chalk.red(`Unknown target '${targetId}'. Known targets: ${ids}`));
+        process.exit(1);
+      }
+    }
+
+    const scopeLabel = targetId
+      ? `target '${targetId}'`
+      : 'all targets (global)';
+
     let running = true;
 
     while (running) {
-      const customEnvs = provider.customEnvs || {};
+      // Determine current env map for the scope
+      const customEnvs: Record<string, string> = targetId
+        ? (provider.targetEnvs?.[targetId] || {})
+        : (provider.customEnvs || {});
+
       const envKeys = Object.keys(customEnvs);
 
-      console.log(chalk.bold(`\nCustom envs for '${providerName}':`));
+      console.log(chalk.bold(`\nCustom envs for '${providerName}' (${scopeLabel}):`));
       if (envKeys.length === 0) {
         console.log(chalk.gray('  (none)'));
       } else {
@@ -62,9 +81,17 @@ export async function envCommand(providerName: string): Promise<void> {
         const key = (entryResponse.entry as string).substring(0, eqIdx).trim();
         const value = (entryResponse.entry as string).substring(eqIdx + 1);
 
-        setProviderEnv(providerName, key, value);
-        if (!provider.customEnvs) provider.customEnvs = {};
-        provider.customEnvs[key] = value;
+        setProviderEnv(providerName, key, value, targetId);
+
+        // Update local mirror so the next loop iteration shows fresh data
+        if (targetId) {
+          if (!provider.targetEnvs) provider.targetEnvs = {};
+          if (!provider.targetEnvs[targetId]) provider.targetEnvs[targetId] = {};
+          provider.targetEnvs[targetId][key] = value;
+        } else {
+          if (!provider.customEnvs) provider.customEnvs = {};
+          provider.customEnvs[key] = value;
+        }
         console.log(chalk.green(`✓ Set ${key}`));
 
       } else if (actionResponse.action === 'remove') {
@@ -82,8 +109,13 @@ export async function envCommand(providerName: string): Promise<void> {
 
         if (!removeResponse.key) continue;
 
-        deleteProviderEnv(providerName, removeResponse.key);
-        delete provider.customEnvs![removeResponse.key];
+        deleteProviderEnv(providerName, removeResponse.key, targetId);
+
+        if (targetId) {
+          delete provider.targetEnvs![targetId][removeResponse.key];
+        } else {
+          delete provider.customEnvs![removeResponse.key];
+        }
         console.log(chalk.green(`✓ Removed ${removeResponse.key}`));
       }
     }

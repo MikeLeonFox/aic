@@ -15,7 +15,7 @@ const program = new Command();
 program
   .name('aic')
   .description('CLI tool to manage multiple AI providers')
-  .version('1.0.5');
+  .version('1.1.0');
 
 program
   .command('add')
@@ -48,8 +48,8 @@ program
   .action(currentCommand);
 
 program
-  .command('env <name>')
-  .description('Manage custom environment variables for a provider')
+  .command('env <name> [target]')
+  .description('Manage custom environment variables for a provider (optionally scoped to a target)')
   .action(envCommand);
 
 program
@@ -60,18 +60,22 @@ program
 
 program
   .command('discover')
-  .description('Import provider settings from ~/.claude/settings.json')
+  .description('Import provider settings from an installed AI tool')
   .option('--name <name>', 'Name for the imported provider')
   .action(discoverCommand);
 
 program
   .command('completion <shell>')
-  .description('Print shell completion script (bash, zsh, fish)')
+  .description('Print shell completion script (bash, zsh, fish, pwsh)')
   .action(completionCommand);
 
-// Show help if no command is provided
+// No args: interactive picker on TTY, names-only list when piped
 if (!process.argv.slice(2).length) {
-  program.help(); // prints and exits, preventing parse() from also printing it
+  if (process.stdout.isTTY) {
+    switchCommand().catch(() => process.exit(1));
+  } else {
+    listCommand({ namesOnly: true });
+  }
+} else {
+  program.parse(process.argv);
 }
-
-program.parse(process.argv);

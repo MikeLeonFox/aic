@@ -7,10 +7,14 @@ export interface ProviderOptions {
 export interface BaseProvider {
   name: string;
   customEnvs?: Record<string, string>;
+  /** Per-target custom env vars: targetId → { KEY: VALUE } */
+  targetEnvs?: Record<string, Record<string, string>>;
   model?: string;
   smallModel?: string;
   headers?: Record<string, string>;
   options?: ProviderOptions;
+  /** Target IDs to apply on switch. Undefined = apply to all installed targets. */
+  targets?: string[];
 }
 
 export interface ClaudeProvider extends BaseProvider {

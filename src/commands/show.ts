@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { listProviders, getActiveProviderName, getApiKey } from '../config/manager.js';
 import { requiresApiKey } from '../types/provider.js';
+import { allTargets } from '../targets/index.js';
 
 interface ShowCommandOptions {
   reveal?: boolean;
@@ -75,10 +76,28 @@ export async function showCommand(name: string | undefined, options: ShowCommand
     }
 
     if (provider.customEnvs && Object.keys(provider.customEnvs).length > 0) {
-      console.log(`  Custom envs:`);
+      console.log(`  Custom envs (all targets):`);
       for (const [key, value] of Object.entries(provider.customEnvs)) {
         console.log(`    ${chalk.cyan(key)}=${value}`);
       }
+    }
+
+    if (provider.targetEnvs && Object.keys(provider.targetEnvs).length > 0) {
+      const targetRegistry = allTargets();
+      console.log(`  Per-target envs:`);
+      for (const [targetId, envs] of Object.entries(provider.targetEnvs)) {
+        const targetLabel = targetRegistry.find(t => t.id === targetId)?.label || targetId;
+        console.log(`    ${chalk.bold(targetLabel)}:`);
+        for (const [key, value] of Object.entries(envs)) {
+          console.log(`      ${chalk.cyan(key)}=${value}`);
+        }
+      }
+    }
+
+    if (provider.targets && provider.targets.length > 0) {
+      const targetRegistry = allTargets();
+      const labels = provider.targets.map(id => targetRegistry.find(t => t.id === id)?.label || id);
+      console.log(`  Targets: ${labels.join(', ')}`);
     }
 
     console.log('');
